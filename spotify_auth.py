@@ -142,10 +142,14 @@ class SpotifyClient:
                     raise SpotifyClientError(f"Spotify API error: {error_msg}", status_code=response.status_code)
                 
                 # Success checks
-                if response.status_code in (204, 202):
+                if response.status_code in (204, 202) or not response.content.strip():
                     return {}  # No content returned
                 
-                return response.json()  # type: ignore[no-any-return]
+                try:
+                    return response.json()  # type: ignore[no-any-return]
+                except ValueError:
+                    return {}  # Return empty dict if response is not JSON
+
                 
             except httpx.HTTPError as e:
                 raise SpotifyClientError(f"HTTP communication with Spotify failed: {e}")
