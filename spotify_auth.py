@@ -1,10 +1,14 @@
 import os
 import time
+from pathlib import Path
 from typing import Dict, Any, Optional
 import httpx
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load dotenv relative to the directory where this script is located
+env_path = Path(__file__).resolve().parent / ".env"
+load_dotenv(dotenv_path=env_path)
+
 
 
 class SpotifyAuthError(Exception):
