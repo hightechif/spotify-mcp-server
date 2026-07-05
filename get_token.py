@@ -4,12 +4,14 @@ import sys
 import urllib.parse
 import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 from typing import Dict, Any, Optional
 import httpx
 from dotenv import load_dotenv
 
-# Load existing environment variables
-load_dotenv()
+# Load existing environment variables relative to the script's directory
+env_path = Path(__file__).resolve().parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 PORT = int(os.environ.get("SPOTIFY_REDIRECT_PORT", "8888"))
 REDIRECT_URI = f"http://127.0.0.1:{PORT}/callback"

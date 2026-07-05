@@ -84,22 +84,47 @@ uv run mypy .
 To register this server with your AI client, add the following configuration block:
 
 ### Claude Desktop
-Add this to your `claude_desktop_config.json` (usually located at `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+Add this to your `claude_desktop_config.json` (usually located at `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS).
 
-```json
-{
-  "mcpServers": {
-    "spotify": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "/Users/ridhanfadhilah/Public/Fadhil/AI/mcp/spotify-mcp-server",
-        "run",
-        "main.py"
-      ]
-    }
-  }
-}
-```
+#### Option A: Hiding Your Absolute Path (Recommended)
+To keep your personal home directory paths private and avoid exposing them in configuration files, you can use an environment variable (e.g., `SPOTIFY_MCP_DIR`).
 
-*Note: Replace `/Users/ridhanfadhilah/Public/Fadhil/AI/mcp/spotify-mcp-server` with the absolute path of this workspace if it is located elsewhere.*
+1. Export the variable in your shell profile (e.g., `~/.zshrc` or `~/.bash_profile`):
+   ```bash
+   export SPOTIFY_MCP_DIR="/path/to/spotify-mcp-server"
+   ```
+2. Configure Claude Desktop to execute `uv` via a login shell, which resolves the environment variable dynamically:
+   ```json
+   {
+     "mcpServers": {
+       "spotify": {
+         "command": "zsh",
+         "args": [
+           "-l",
+           "-c",
+           "uv --directory \"$SPOTIFY_MCP_DIR\" run main.py"
+         ]
+       }
+     }
+   }
+   ```
+   *(If you are using bash, replace `"command": "zsh"` with `"command": "bash"` and load profile accordingly)*
+
+#### Option B: Standard Direct Configuration
+If you do not mind exposing your directory path, configure the absolute path directly:
+   ```json
+   {
+     "mcpServers": {
+       "spotify": {
+         "command": "uv",
+         "args": [
+           "--directory",
+           "/path/to/spotify-mcp-server",
+           "run",
+           "main.py"
+         ]
+       }
+     }
+   }
+   ```
+   *(Note: Replace `/path/to/spotify-mcp-server` with the actual absolute path to this repository on your system)*
