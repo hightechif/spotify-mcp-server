@@ -257,7 +257,8 @@ async def search_spotify(query: str, type: str = "track,playlist", limit: int = 
         # Parse tracks
         if "tracks" in search_res and search_res["tracks"]["items"]:
             output.append("\n=== Tracks ===")
-            for idx, track in enumerate(search_res["tracks"]["items"][:limit], 1):
+            valid_tracks = [track for track in search_res["tracks"]["items"] if track is not None]
+            for idx, track in enumerate(valid_tracks[:limit], 1):
                 track_name = track.get("name", "Unknown Track")
                 artists = ", ".join([artist.get("name", "Unknown Artist") for artist in track.get("artists", [])])
                 uri = track.get("uri", "")
@@ -266,7 +267,8 @@ async def search_spotify(query: str, type: str = "track,playlist", limit: int = 
         # Parse playlists
         if "playlists" in search_res and search_res["playlists"]["items"]:
             output.append("\n=== Playlists ===")
-            for idx, playlist in enumerate(search_res["playlists"]["items"][:limit], 1):
+            valid_playlists = [playlist for playlist in search_res["playlists"]["items"] if playlist is not None]
+            for idx, playlist in enumerate(valid_playlists[:limit], 1):
                 playlist_name = playlist.get("name", "Unknown Playlist")
                 owner = playlist.get("owner", {}).get("display_name", "Unknown Owner")
                 uri = playlist.get("uri", "")
@@ -275,7 +277,8 @@ async def search_spotify(query: str, type: str = "track,playlist", limit: int = 
         # Parse albums
         if "albums" in search_res and search_res["albums"]["items"]:
             output.append("\n=== Albums ===")
-            for idx, album in enumerate(search_res["albums"]["items"][:limit], 1):
+            valid_albums = [album for album in search_res["albums"]["items"] if album is not None]
+            for idx, album in enumerate(valid_albums[:limit], 1):
                 album_name = album.get("name", "Unknown Album")
                 artists = ", ".join([artist.get("name", "Unknown Artist") for artist in album.get("artists", [])])
                 uri = album.get("uri", "")
@@ -304,11 +307,12 @@ async def play_by_search(query: str, type: str = "track") -> str:
         # 1. Search for the top item
         search_res = await spotify_client.get(
             "search", 
-            params={"q": query, "type": type, "limit": 1}
+            params={"q": query, "type": type, "limit": 5}
         )
         
         type_plural = f"{type}s"
-        items = search_res.get(type_plural, {}).get("items", [])
+        raw_items = search_res.get(type_plural, {}).get("items", [])
+        items = [item for item in raw_items if item is not None]
         if not items:
             return f"No matching {type} found for query '{query}'."
             
