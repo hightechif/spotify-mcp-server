@@ -9,4 +9,13 @@ dependencies = [
     "mcp>=1.28.1",
     "mypy>=2.1.0",
     "python-dotenv>=1.2.2",
+    "spotipy>=2.26.0",
 ]
+
+[tool.mypy]
+ignore_missing_imports = false
+
+[[tool.mypy.overrides]]
+module = "spotipy.*"
+ignore_missing_imports = true
+
