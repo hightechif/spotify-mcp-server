@@ -64,6 +64,30 @@ def mcp_tool_guard(func: Callable[..., Any]) -> Callable[..., Any]:
             return {"error": str(e)}
     return wrapper
 
+def execute_playback_command(
+    sp: spotipy.Spotify, 
+    command_fn: Callable[..., Any], 
+    *args: Any, 
+    **kwargs: Any
+) -> Any:
+    """Executes a playback command, automatically transferring to an available device if needed."""
+    try:
+        return command_fn(*args, **kwargs)
+    except Exception as err:
+        if "NO_ACTIVE_DEVICE" in str(err) or "No active device" in str(err):
+            devices = sp.devices().get("devices", [])
+            if not devices:
+                raise ValueError("No active or available Spotify devices found. Please open Spotify on a device.") from err
+            
+            device_id = devices[0].get("id")
+            # Transfer playback to the first available device
+            sp.transfer_playback(device_id=device_id, force_play=True)
+            
+            # Retry the command on the new active device
+            kwargs["device_id"] = device_id
+            return command_fn(*args, **kwargs)
+        raise err
+
 @mcp.tool()
 @mcp_tool_guard
 def get_current_playback(access_token: Optional[str] = None) -> dict:
@@ -86,7 +110,7 @@ def get_current_playback(access_token: Optional[str] = None) -> dict:
 def pause_playback(access_token: Optional[str] = None) -> dict:
     """Pause the current audio playback on Spotify."""
     sp = get_spotify_client(access_token)
-    sp.pause_playback()
+    execute_playback_command(sp, sp.pause_playback)
     return {"status": "Playback paused successfully."}
 
 @mcp.tool()
@@ -94,7 +118,7 @@ def pause_playback(access_token: Optional[str] = None) -> dict:
 def resume_playback(access_token: Optional[str] = None) -> dict:
     """Resume the current audio playback on Spotify."""
     sp = get_spotify_client(access_token)
-    sp.start_playback()
+    execute_playback_command(sp, sp.start_playback)
     return {"status": "Playback resumed successfully."}
 
 @mcp.tool()
@@ -102,7 +126,7 @@ def resume_playback(access_token: Optional[str] = None) -> dict:
 def skip_next(access_token: Optional[str] = None) -> dict:
     """Skip to the next track on Spotify."""
     sp = get_spotify_client(access_token)
-    sp.next_track()
+    execute_playback_command(sp, sp.next_track)
     return {"status": "Skipped to next track."}
 
 @mcp.tool()
@@ -110,7 +134,7 @@ def skip_next(access_token: Optional[str] = None) -> dict:
 def skip_previous(access_token: Optional[str] = None) -> dict:
     """Skip to the previous track on Spotify."""
     sp = get_spotify_client(access_token)
-    sp.previous_track()
+    execute_playback_command(sp, sp.previous_track)
     return {"status": "Skipped to previous track."}
 
 @mcp.tool()
@@ -118,7 +142,7 @@ def skip_previous(access_token: Optional[str] = None) -> dict:
 def set_volume(volume_percent: int, access_token: Optional[str] = None) -> dict:
     """Set the playback volume percentage on Spotify."""
     sp = get_spotify_client(access_token)
-    sp.volume(volume_percent)
+    execute_playback_command(sp, sp.volume, volume_percent)
     return {"status": f"Volume set to {volume_percent}%."}
 
 @mcp.tool()
@@ -184,29 +208,11 @@ def play_by_search(query: str, type: str = "track", access_token: Optional[str] 
         return {"error": f"Unsupported playback search type: {type}"}
 
     # Attempt to play URI
-    try:
-        if type == "track":
-            sp.start_playback(uris=[target_uri])
-        else:
-            sp.start_playback(context_uri=target_uri)
-        return {"status": f"Now playing {item_name}."}
-    except Exception as play_err:
-        # Handle NO_ACTIVE_DEVICE by attempting to transfer to the first available active device
-        if "NO_ACTIVE_DEVICE" in str(play_err) or "No active device" in str(play_err):
-            devices = sp.devices().get("devices", [])
-            if not devices:
-                return {"error": "No active or available Spotify devices found. Please open Spotify on a device."}
-            
-            device_id = devices[0].get("id")
-            sp.transfer_playback(device_id=device_id, force_play=True)
-            
-            # Retry playback command on new active device
-            if type == "track":
-                sp.start_playback(device_id=device_id, uris=[target_uri])
-            else:
-                sp.start_playback(device_id=device_id, context_uri=target_uri)
-            return {"status": f"Transferred playback to {devices[0].get('name')} and playing {item_name}."}
-        raise play_err
+    if type == "track":
+        execute_playback_command(sp, sp.start_playback, uris=[target_uri])
+    else:
+        execute_playback_command(sp, sp.start_playback, context_uri=target_uri)
+    return {"status": f"Now playing {item_name}."}
 
 if __name__ == "__main__":
     mcp.run()
